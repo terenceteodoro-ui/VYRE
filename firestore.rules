@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function connPath(id) { return /databases/$(database)/documents/connections/$(id); }
+    function convPath(id) { return /databases/$(database)/documents/conversations/$(id); }
+
+    // usernames/{name}: lookup only by exact name (get, no list). Create-once, never changed => uniqueness.
+    match /usernames/{name} {
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == me() && name.matches('^[a-z0-9_]{3,20}$');
+      allow update, delete: if false;
+    }
+    // users/{uid}: any signed-in user may fetch ONE profile by uid; no listing. Only the owner writes.
+    match /users/{uid} {
+      allow get: if signedIn();
+      allow create: if me() == uid && request.resource.data.uid == uid
+        && request.resource.data.usernameLowercase.matches('^[a-z0-9_]{3,20}$')
+        && request.resource.data.displayName.size() <= 40;
+      allow update: if me() == uid && request.resource.data.usernameLowercase == resource.data.usernameLowercase
+        && request.resource.data.uid == uid;
+      allow delete: if me() == uid;
+    }
+    // connections/{uidA_uidB} (ids sorted). Only the two members can read. Only the recipient can accept.
+    match /connections/{id} {
+      allow read: if signedIn() && me() in resource.data.users;
+      allow create: if signedIn() && request.resource.data.users.size() == 2
+        && me() in request.resource.data.users
+        && id == request.resource.data.users[0] + '_' + request.resource.data.users[1]
+        && request.resource.data.requester == me() && request.resource.data.status == 'pending';
+      allow update: if signedIn() && me() in resource.data.users && resource.data.requester != me()
+        && resource.data.status == 'pending' && request.resource.data.status == 'accepted'
+        && request.resource.data.users == resource.data.users && request.resource.data.requester == resource.data.requester;
+      allow delete: if signedIn() && me() in resource.data.users;
+    }
+    // conversations/{id} (id == connection id). Created only after the connection is accepted.
+    match /conversations/{cid} {
+      allow read: if signedIn() && me() in resource.data.members;
+      allow create: if signedIn() && me() in request.resource.data.members
+        && request.resource.data.members.size() == 2
+        && get(connPath(cid)).data.status == 'accepted'
+        && request.resource.data.members.hasAll(get(connPath(cid)).data.users);
+      allow update: if signedIn() && me() in resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage','updatedAt']);
+      allow delete: if false;
+
+      // messages: members read; sender creates (while still connected); only sender deletes; no edits yet.
+      match /messages/{mid} {
+        allow read: if signedIn() && me() in get(convPath(cid)).data.members;
+        allow create: if signedIn() && me() in get(convPath(cid)).data.members
+          && exists(connPath(cid))
+          && request.resource.data.keys().hasOnly(['senderId','text','createdAt'])
+          && request.resource.data.senderId == me()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+        allow delete: if signedIn() && resource.data.senderId == me();
+        allow update: if false;
+      }
+    }
+  }
+}

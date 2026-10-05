@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>VYRE</title>
+<link rel="stylesheet" href="styles.css"></head><body>
+<div id="setup" hidden><h1>VYRE</h1><p>Firebase is not configured. Paste your web config into <code>firebase-config.js</code>, then reload.</p></div>
+<div id="boot" class="center mono">CONNECTING...</div>
+<main id="auth" class="center" hidden>
+ <form id="authForm" class="card" novalidate>
+  <h1>VYRE</h1><p class="mono dim">PRIVATE BY DESIGN.</p>
+  <div id="regFields" hidden>
+   <label>Username<input id="username" autocomplete="username" placeholder="alex"></label>
+   <label>Display name<input id="displayName" maxlength="40"></label></div>
+  <label>Email<input id="email" type="email" autocomplete="email" required></label>
+  <label>Password<input id="password" type="password" autocomplete="current-password" required></label>
+  <p id="authErr" class="err" role="alert"></p>
+  <button id="authBtn" class="primary">Sign in</button>
+  <button type="button" id="google">Continue with Google</button>
+  <button type="button" id="reset" class="link">Reset password</button>
+  <button type="button" id="toggle" class="link">Create account</button>
+  <p class="mono dim small">SECURE CONNECTION · AUTHENTICATION REQUIRED</p>
+ </form></main>
+<div id="app" hidden>
+ <nav><b class="logo">VYRE</b>
+  <button data-tab="chats" aria-label="Chats">Chats</button>
+  <button data-tab="conns" aria-label="Connections">Connections <i id="badge" hidden></i></button>
+  <button id="out">Sign out</button>
+  <div class="me mono"><span id="meName"></span><br><span class="dim">Online</span></div></nav>
+ <aside id="list"><input id="q" placeholder="Search @username" aria-label="Search by exact username">
+  <div id="results"></div><h2 id="listTitle" class="mono dim">CHATS</h2><div id="items"></div></aside>
+ <section id="chat"><header><button id="back" aria-label="Back">←</button><div><span class="mono dim small">SECURE CHANNEL</span><br><b id="peer">Select a chat</b></div></header>
+  <div id="msgs" aria-live="polite"><p class="empty">No conversation selected.</p></div>
+  <form id="composer"><input id="text" maxlength="2000" placeholder="Type a message..." aria-label="Message" autocomplete="off"><button class="primary" aria-label="Send">➤</button></form></section>
+</div>
+<script type="module" src="app.js"></script></body></html>
